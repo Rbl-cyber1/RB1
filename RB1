@@ -1,0 +1,50 @@
+from pathlib import Path
+import zipfile, shutil
+
+src_zip = Path("/mnt/data/REBELL_NET_Projet_Android.zip")
+if not src_zip.exists():
+    raise FileNotFoundError("L'archive du projet Android d'origine n'est pas disponible.")
+
+work = Path("/mnt/data/BR1_Android_Project")
+if work.exists():
+    shutil.rmtree(work)
+work.mkdir(parents=True)
+
+with zipfile.ZipFile(src_zip, "r") as z:
+    z.extractall(work)
+
+candidates = list(work.rglob("AndroidManifest.xml"))
+if not candidates:
+    raise FileNotFoundError("Le manifeste Android est absent de l'archive.")
+project = candidates[0].parents[3]
+
+manifest = project / "app/src/main/AndroidManifest.xml"
+manifest.write_text(
+    manifest.read_text(encoding="utf-8").replace('android:label="REBELL NET"', 'android:label="BR1"'),
+    encoding="utf-8"
+)
+
+html = project / "app/src/main/assets/index.html"
+h = html.read_text(encoding="utf-8")
+h = h.replace("<title>REBELL NET</title>", "<title>BR1</title>")
+h = h.replace("REBELL NET", "BR1").replace("rebellnet_v1", "br1_v1")
+html.write_text(h, encoding="utf-8")
+
+readme = project / "README_FR.txt"
+if readme.exists():
+    r = readme.read_text(encoding="utf-8")
+    r = r.replace("REBELL NET", "BR1").replace("REBELL-NET", "BR1")
+    readme.write_text(r, encoding="utf-8")
+
+settings = project / "settings.gradle"
+if settings.exists():
+    s = settings.read_text(encoding="utf-8").replace('rootProject.name = "REBELL_NET"', 'rootProject.name = "BR1"')
+    settings.write_text(s, encoding="utf-8")
+
+out = Path("/mnt/data/BR1_Projet_Android.zip")
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+    for p in project.rglob("*"):
+        if p.is_file():
+            z.write(p, Path("BR1_Android") / p.relative_to(project))
+
+print(f"Archive BR1 créée : {out}")
